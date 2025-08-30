@@ -230,7 +230,7 @@ class EpubCover(EpubItem):
     Represents Cover image in the EPUB file.
     """
 
-    def __init__(self, uid='cover-img', file_name=''):
+    def __init__(self, uid='cover', file_name=''):
         super(EpubCover, self).__init__(uid=uid, file_name=file_name)
 
     def get_type(self):
@@ -470,7 +470,7 @@ class EpubCoverHtml(EpubHtml):
     Represents Cover page in the EPUB file.
     """
 
-    def __init__(self, uid='cover', file_name='cover.xhtml', image_name='', title='Cover'):
+    def __init__(self, uid='cover-html', file_name='cover.xhtml', image_name='', title='Cover'):
         super(EpubCoverHtml, self).__init__(uid=uid, file_name=file_name, title=title)
 
         self.image_name = image_name
@@ -678,7 +678,7 @@ class EpubBook(object):
             c1 = EpubCoverHtml(image_name=file_name)
             self.add_item(c1)
 
-        self.add_metadata(None, 'meta', '', OrderedDict([('name', 'cover'), ('content', 'cover-img')]))
+        self.add_metadata(None, 'meta', '', OrderedDict([('name', 'cover'), ('content', c0.id)]))
 
     def add_author(self, author, file_as=None, role=None, uid='creator'):
         "Add author for this document"
@@ -1006,10 +1006,19 @@ class EpubWriter(object):
                                                     'media-type': item.media_type})
 
             elif isinstance(item, EpubCover):
-                etree.SubElement(manifest, 'item', {'href': item.file_name,
-                                                    'id': item.id,
-                                                    'media-type': item.media_type,
-                                                    'properties': 'cover-image'})
+                opts = {'href': item.file_name,
+                        'id': item.id,
+                        'media-type': item.media_type,
+                        'properties': 'cover-image'}
+                for item_ in self.book.get_items():
+                    if isinstance(item_, EpubCoverHtml):
+                        opts['fallback'] = item_.id
+                        break
+                if not opts['fallback']:
+                    warnings.warn('EpubCover present but cannot find EpubCoverHtml. EpubCover image will have no '
+                                  'fallback xhtml, which does not follow EPUB specification.')
+                etree.SubElement(manifest, 'item', opts)
+
             else:
                 opts = {'href': item.file_name,
                         'id': item.id,
